@@ -1,0 +1,70 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-center">Admin Dashboard</h1>
+    <div class="mt-4">
+        <h3>Welcome, {{ request.user.username }}!</h3>
+        <p>You have full control over the system.</p>
+    </div>                                                                                                                       
+
+    <!-- Cards for Quick Overview -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">Total Students</div>
+                <div class="card-body">
+                    <h5 class="card-title">150</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">Total Attendance Logs</div>
+                <div class="card-body">
+                    <h5 class="card-title">1,200</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">Today's Attendance</div>
+                <div class="card-body">
+                    <h5 class="card-title">85%</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Data Table -->
+    <h3 class="mt-4">Student Data</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Student ID</th>
+                <th>Section</th>
+                <th>Attendance Logs</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+            <tr>
+                <td>{{ student.name }}</td>
+                <td>{{ student.student_id }}</td>
+                <td>{{ student.section }}</td>
+                <td>
+                    <ul>
+                        {% for log in student.get_attendance_logs %}
+                        <li>{{ log.date }}: {{ log.status }}</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

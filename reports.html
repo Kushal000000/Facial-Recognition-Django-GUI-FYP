@@ -1,0 +1,78 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/datatables.min.css' %}">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <h2 class="mb-4 text-center">📊 Attendance Reports</h2>
+
+  <!-- Filter Form -->
+  <form method="get" class="row mb-4">
+    <div class="col-md-3 mb-2">
+      <input type="date" name="start_date" class="form-control" value="{{ request.GET.start_date }}" placeholder="Start Date">
+    </div>
+    <div class="col-md-3 mb-2">
+      <input type="date" name="end_date" class="form-control" value="{{ request.GET.end_date }}" placeholder="End Date">
+    </div>
+    <div class="col-md-3 mb-2">
+      <select name="section" class="form-control">
+        <option value="">Select Section</option>
+        {% for sec in all_sections %}
+          <option value="{{ sec }}" {% if sec == request.GET.section %}selected{% endif %}>{{ sec }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3 mb-2 d-flex gap-2">
+      <button type="submit" class="btn btn-primary w-50">Filter</button>
+      <a href="?start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}&section={{ request.GET.section }}&export=csv" class="btn btn-success">Export CSV</a>
+      <a href="?start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}&section={{ request.GET.section }}&export=pdf" class="btn btn-danger">Export PDF</a>
+    </div>
+  </form>
+
+  <!-- Data Table -->
+  <div class="table-responsive">
+    <table id="reportTable" class="table table-bordered table-striped">
+      <thead class="table-dark">
+        <tr>
+          <th>S.N.</th>
+          <th>Name</th>
+          <th>Student ID</th>
+          <th>Section</th>
+          <th>Gender</th>
+          <th>Time of Entry</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in data %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ log.name }}</td>
+          <td>'{{ log.student_id }}</td> <!-- Add leading apostrophe to preserve leading 0s in CSV -->
+          <td>{{ log.section }}</td>
+          <td>{{ log.gender }}</td>
+          <td>{{ log.time_of_entry|date:"Y-m-d H:i:s" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <script>
+    $(document).ready(function () {
+      $('#reportTable').DataTable({
+        "pageLength": 10,
+        "lengthMenu": [5, 10, 25, 50],
+        "order": [[ 5, "desc" ]] // Order by latest entry
+      });
+    });
+  </script>
+{% endblock %}

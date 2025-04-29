@@ -1,0 +1,47 @@
+{% extends 'base/base.html' %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/datatables.min.css' %}">
+<script src="{% static 'js/jquery.min.js' %}"></script>
+<script src="{% static 'js/datatables.min.js' %}"></script>
+<script src="{% static 'js/chart.min.js' %}"></script>
+{% block content %}
+<div class="container mt-5">
+  <h2 class="mb-4 text-center">Attendance Statistics</h2>
+  <div class="row text-center mb-4">
+    <div class="col"><strong>Total:</strong> <span id="total-count">{{ total_students }}</span></div>
+    <div class="col"><strong>Male:</strong> <span id="male-count">{{ male_students }}</span></div>
+    <div class="col"><strong>Female:</strong> <span id="female-count">{{ female_students }}</span></div>
+  </div>
+  <div class="row">
+    <div class="col-md-6"><canvas id="pieChart"></canvas></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx = document.getElementById('pieChart');
+const pieChart = new Chart(ctx, {
+  type: 'pie',
+  data: {
+    labels: ['Male', 'Female'],
+    datasets: [{
+      data: [{{ male_students }}, {{ female_students }}],
+      backgroundColor: ['#36A2EB', '#FF6384'],
+    }]
+  }
+});
+
+setInterval(() => {
+  fetch("{% url 'statistics' %}")
+    .then(res => res.text())
+    .then(html => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      document.getElementById("total-count").innerText = doc.getElementById("total-count").innerText;
+      document.getElementById("male-count").innerText = doc.getElementById("male-count").innerText;
+      document.getElementById("female-count").innerText = doc.getElementById("female-count").innerText;
+    });
+}, 30000);
+</script>
+{% endblock %}
+ 

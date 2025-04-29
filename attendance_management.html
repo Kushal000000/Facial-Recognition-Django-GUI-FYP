@@ -1,0 +1,296 @@
+{% extends 'base/base.html' %}
+{% block title %}Attendance Management{% endblock %}
+{% block content %}
+<script>
+    const RPI_FLASK_URL = "http://192.168.1.85:5000"; // Your Raspberry Pi IP
+</script>
+
+<div class="container">
+    <h2 class="mb-4">Add a New Student</h2>
+    <form id="enrollForm">
+        <div class="row mb-3">
+            <div class="col">
+                <input type="text" name="name" class="form-control" placeholder="New student's name" required>
+            </div>
+            <div class="col">
+                <input type="text" name="student_id" class="form-control" placeholder="Student ID" required>
+            </div>
+            <div class="col">
+                <input type="text" name="section" class="form-control" placeholder="Class/Section" required>
+            </div>
+            <div class="col">
+                <select name="gender" class="form-control" required>
+                    <option value="">Select Gender</option>
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="text-center mb-3">
+            <img id="cameraFeed" src="http://192.168.1.73:81/stream" width="320" height="240" class="border rounded shadow" />
+        </div>
+
+        <div class="d-flex justify-content-center gap-2">
+            <button type="button" class="btn btn-primary" onclick="startEnrollment()">Start Enrollment</button>
+            <button type="button" class="btn btn-success" onclick="captureImage()">Capture Image</button>
+            <button type="button" class="btn btn-outline-primary" onclick="saveStudent()">Save Student</button>
+        </div>
+    </form>
+</div>
+
+<hr class="my-5">
+
+<h2 class="mb-4">Student Profile & Logs</h2>
+<form id="profileForm" class="mb-4">
+    <div class="row mb-3">
+        <div class="col">
+            <input type="text" name="name" class="form-control" placeholder="Enter Student's Name" required>
+        </div>
+        <div class="col">
+            <input type="text" name="student_id" class="form-control" placeholder="Enter Student ID" required>
+        </div>
+        <div class="col">
+            <input type="text" name="section" class="form-control" placeholder="Enter Section" required>
+        </div>
+        <div class="col">
+            <button type="button" class="btn btn-info" onclick="fetchProfile()">View Profile</button>
+        </div>
+    </div>
+</form>
+
+<div id="profileDisplay" class="border rounded p-4 shadow d-none">
+    <div class="row">
+        <div class="col-md-4 text-center">
+            <img id="studentImage" src="" class="img-fluid rounded mb-3" style="max-height: 200px;" />
+        </div>
+        <div class="col-md-8">
+            <h5>Personal Information</h5>
+            <ul class="list-group mb-3">
+                <li class="list-group-item"><strong>Name:</strong> <span id="infoName"></span></li>
+                <li class="list-group-item"><strong>ID:</strong> <span id="infoID"></span></li>
+                <li class="list-group-item"><strong>Section:</strong> <span id="infoSection"></span></li>
+                <li class="list-group-item"><strong>Gender:</strong> <span id="infoGender"></span></li>
+                <li class="list-group-item"><strong>Phone:</strong> <span id="infoPhone"></span></li>
+                <li class="list-group-item"><strong>Email:</strong> <span id="infoEmail"></span></li>
+                <li class="list-group-item"><strong>Father's Name:</strong> <span id="infoFather"></span></li>
+                <li class="list-group-item"><strong>Mother's Name:</strong> <span id="infoMother"></span></li>
+                <li class="list-group-item"><strong>Enrollment Date:</strong> <span id="infoEnrollDate"></span></li>
+            </ul>
+        </div>
+    </div>
+
+    <h5>Attendance Summary</h5>
+    <canvas id="attendanceChart" style="max-height: 300px;"></canvas>
+
+    <h5 class="mt-4">Attendance Logs</h5>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Time of Entry</th>
+            </tr>
+        </thead>
+        <tbody id="attendanceLogs"></tbody>
+    </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js">
+        const RPI_FLASK_URL = "http://192.168.1.85:5000";
+
+</script>
+<script>
+function fetchProfile() {
+    const form = document.getElementById('profileForm');
+    const data = {
+        name: form.name.value.trim(),
+        student_id: form.student_id.value.trim(),
+        section: form.section.value.trim()
+    };
+
+    fetch(`${RPI_FLASK_URL}/get_student_profile`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(response => {
+        if (response.status === "success") {
+            const d = response.data;
+            document.getElementById("profileDisplay").classList.remove("d-none");
+            document.getElementById("studentImage").src = d.image_url;
+            document.getElementById("infoName").textContent = d.name;
+            document.getElementById("infoID").textContent = d.student_id;
+            document.getElementById("infoSection").textContent = d.section;
+            document.getElementById("infoGender").textContent = d.gender;
+            document.getElementById("infoPhone").textContent = d.phone;
+            document.getElementById("infoEmail").textContent = d.email;
+            document.getElementById("infoFather").textContent = d.father_name;
+            document.getElementById("infoMother").textContent = d.mother_name;
+            document.getElementById("infoEnrollDate").textContent = d.enrollment_date;
+
+
+            // Chart
+            const ctx = document.getElementById('attendanceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Present', 'Absent'],
+                    datasets: [{
+                        label: 'Attendance',
+                        data: [d.present_count, d.absent_count],
+                        backgroundColor: ['#28a745', '#dc3545'],
+                    }]
+                }
+            });
+
+            // Logs
+            const logsTable = document.getElementById("attendanceLogs");
+            logsTable.innerHTML = "";
+            d.logs.forEach((log, idx) => {
+                logsTable.innerHTML += `<tr><td>${idx + 1}</td><td>${log}</td></tr>`;
+            });
+
+            // ✅ Show success alert
+            alert("✅ Student profile loaded successfully!");
+
+        } else {
+            alert(response.message || "⚠️ No student found");
+        }
+    })
+    .catch((err) => {
+        console.error(err);
+        alert("❌ Failed to fetch student profile.");
+    });
+}
+
+</script>
+
+<script>
+    const RPI_FLASK_URL = "http://192.168.1.85:5000";
+    let captured = false;
+
+    function getFormData() {
+        const form = document.getElementById('enrollForm');
+        return {
+            name: form.name.value.trim(),
+            student_id: form.student_id.value.trim(),
+            section: form.section.value.trim(),
+            gender: form.gender.value.trim()
+        };
+    }
+
+    function showAlert(msg) {
+        alert(msg);
+    }
+
+    function startEnrollment() {
+        const data = getFormData();
+        if (Object.values(data).some(val => !val)) {
+            return showAlert("Please fill in all fields before starting enrollment.");
+        }
+
+        fetch(`${RPI_FLASK_URL}/start_enroll`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(json => showAlert(json.message))
+        .catch(() => showAlert("Failed to connect to Raspberry Pi"));
+    }
+
+    function captureImage() {
+        const data = getFormData();
+        if (Object.values(data).some(val => !val)) {
+            return showAlert("Please fill in all fields before capturing an image.");
+        }
+
+        const folderName = `${data.name.replace(/\s/g, "")}_${data.student_id}_${data.section}_${data.gender}`;
+
+        fetch(`${RPI_FLASK_URL}/capture`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ folder_name: folderName })
+        })
+        .then(res => res.json())
+        .then(json => {
+            captured = true;
+            showAlert(json.message);
+        })
+        .catch(() => showAlert("Failed to capture image"));
+    }
+
+    function saveStudent() {
+        const data = getFormData();
+        if (Object.values(data).some(val => !val)) {
+            return showAlert("Please fill in all fields.");
+        }
+        if (!captured) {
+            return showAlert("Please capture at least one image before saving.");
+        }
+        showAlert("Student saved successfully!");
+        document.getElementById('enrollForm').reset();
+        captured = false;
+    }
+
+    {
+
+    }
+</script>
+<hr class="my-5">
+<h4>✏️ Edit Student Information</h4>
+<form onsubmit="event.preventDefault(); updateStudentDetails();">
+  <div class="row mb-3">
+    <div class="col"><input type="text" class="form-control" id="edit_name" placeholder="Student Name" required></div>
+    <div class="col"><input type="text" class="form-control" id="edit_id" placeholder="Student ID" required></div>
+    <div class="col"><input type="text" class="form-control" id="edit_section" placeholder="Section" required></div>
+  </div>
+  <div class="row mb-3">
+    <div class="col"><input type="text" class="form-control" id="edit_phone" placeholder="Phone Number"></div>
+    <div class="col"><input type="email" class="form-control" id="edit_email" placeholder="Email"></div>
+  </div>
+  <div class="row mb-3">
+    <div class="col"><input type="text" class="form-control" id="edit_father" placeholder="Father's Name"></div>
+    <div class="col"><input type="text" class="form-control" id="edit_mother" placeholder="Mother's Name"></div>
+  </div>
+  <div class="mb-3">
+    <input type="date" class="form-control" id="edit_enroll" placeholder="Enrollment Date">
+  </div>
+  <button type="submit" class="btn btn-success">Update Student Info</button>
+</form>
+
+<script>
+    function updateStudentDetails() {
+        const data = {
+            name: document.getElementById("edit_name").value.trim(),
+            student_id: document.getElementById("edit_id").value.trim(),
+            section: document.getElementById("edit_section").value.trim(),
+            phone: document.getElementById("edit_phone").value.trim(),
+            email: document.getElementById("edit_email").value.trim(),
+            father_name: document.getElementById("edit_father").value.trim(),
+            mother_name: document.getElementById("edit_mother").value.trim(),
+            enrollment_date: document.getElementById("edit_enroll").value
+        };
+    
+        console.log("Sending Data to Flask:", data);  // Debugging
+    
+        fetch(`${RPI_FLASK_URL}/update_student`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(res => {
+            console.log("Response from Flask:", res);  // Debugging
+            alert(res.message);
+        })
+        .catch(error => {
+            console.error("Fetch Error:", error);
+            alert("Failed to update student info. Please try again.");
+        });
+    }
+    </script>
+    
+    
+{% endblock %}
